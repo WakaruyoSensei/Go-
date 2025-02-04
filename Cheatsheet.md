@@ -621,3 +621,173 @@ errorB // Error("Parameter text is empty")
 
 <hr/>
 
+# Unit 5: Go Routines and Channels
+
+## 5.1 Concurrency vs. Parallelism
+
+**Concurrency:**  
+Concurrency is the ability to deal with multiple tasks at once, but not necessarily simultaneously. It involves managing multiple tasks that might be using the same resources or CPU time but doesn’t imply that they are executed at the same time.  
+Go achieves concurrency using **goroutines** and **channels**, enabling multiple tasks to run concurrently without requiring multiple threads.
+
+**Parallelism:**  
+Parallelism is the actual execution of tasks at the same time, typically on different processors or cores. This requires hardware support for multiple CPU cores.  
+Go allows goroutines to run in parallel if there are multiple available cores on the system.
+
+**Key Differences:**  
+- **Concurrency** is about managing multiple tasks that can run at different times, potentially overlapping.  
+- **Parallelism** is about executing tasks simultaneously on multiple processors.
+
+In Go, goroutines allow you to achieve both concurrency and parallelism, depending on the availability of multiple CPU cores.
+
+---
+
+## 5.2 Go Routine Functions and Lambdas
+
+**Goroutines:**  
+A **goroutine** is a lightweight thread managed by the Go runtime. Goroutines are much more memory-efficient than threads because they require only a small initial stack size and can grow dynamically.  
+You start a goroutine by using the `go` keyword followed by a function or an anonymous function (lambda).
+
+**Example of a basic Goroutine:**
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func sayHello() {
+    fmt.Println("Hello from Goroutine!")
+}
+
+func main() {
+    go sayHello() // starts the goroutine
+    time.Sleep(time.Second) // wait for the goroutine to finish
+    fmt.Println("Main function ends")
+}
+```
+In the example above, the `sayHello()` function runs concurrently with the `main` function. The `main` function waits using `time.Sleep` to ensure the goroutine has time to finish.
+
+**Anonymous Functions as Goroutines (Lambdas):**  
+**Anonymous functions**, or **lambdas**, can also be executed as goroutines. These functions are defined inline without a name and are useful when you need to pass a function to a goroutine without having to define it separately.
+
+**Example using an anonymous function:**
+```go
+package main
+
+import "fmt"
+
+func main() {
+    go func() {
+        fmt.Println("Hello from Anonymous Goroutine!")
+    }()
+    fmt.Println("Main function ends")
+}
+```
+Here, the anonymous function is executed in a separate goroutine, allowing the `main` function to continue while the goroutine runs.
+
+---
+
+## 5.3 Wait Groups
+
+**What is a WaitGroup?**  
+A **WaitGroup** is a synchronization tool that is used to wait for a group of goroutines to finish executing. It helps ensure that the main program doesn't exit until all goroutines have completed their work.
+
+**Using WaitGroup:**  
+The `sync.WaitGroup` type is used to manage multiple goroutines. You use `Add()` to increase the count of goroutines, `Done()` to signal when a goroutine finishes, and `Wait()` to block until all the goroutines have finished.
+
+**Example of using WaitGroup:**
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+func task(id int, wg *sync.WaitGroup) {
+	defer wg.Done() // Decreases the counter when the goroutine finishes
+    fmt.Printf("Task %d started
+", id)
+}
+
+func main() {
+    var wg sync.WaitGroup
+
+    for i := 1; i <= 3; i++ {
+        wg.Add(1) // Adds a goroutine to the WaitGroup
+        go task(i, &wg) // Launch the goroutine
+    }
+
+    wg.Wait() // Waits for all goroutines to finish
+    fmt.Println("All tasks completed!")
+}
+```
+In this example, the main function waits for three goroutines to finish before printing "All tasks completed!". The `wg.Add(1)` increments the counter for each goroutine, and `wg.Done()` decrements it when a goroutine finishes. `wg.Wait()` blocks the main function until all goroutines are done.
+
+---
+
+## 5.4 Channels
+
+**What is a Channel?**  
+A **channel** is a powerful Go construct used for communication between goroutines. It allows you to pass data between goroutines safely, synchronizing their execution and ensuring data consistency.  
+Channels can be either **unbuffered** (block until data is received) or **buffered** (allow sending multiple values before receiving).
+
+**Creating a Channel:**  
+You can create a channel using the `make` function. The channel type determines what kind of data it can carry, such as `chan int` for integers.
+
+```go
+ch := make(chan int) // creates an unbuffered channel for integers
+```
+
+**Sending and Receiving Data:**  
+Data is **sent** into a channel using the `<-` operator, and it is **received** from a channel using the same operator.
+
+**Example of sending and receiving data through a channel:**
+```go
+package main
+
+import "fmt"
+
+func main() {
+    ch := make(chan int)
+
+    go func() {
+        ch <- 42 // Send value into the channel
+    }()
+
+    val := <-ch // Receive value from the channel
+    fmt.Println("Received value:", val)
+}
+```
+In this example, the main function sends a value into the channel, and a goroutine retrieves and prints it.
+
+**Buffered Channels:**  
+A **buffered channel** allows you to send multiple values without blocking until the buffer is full. It’s useful when you know the amount of data you want to send and receive in a batch.
+
+```go
+ch := make(chan int, 2) // Create a buffered channel with capacity for 2
+ch <- 1
+ch <- 2
+fmt.Println(<-ch)
+fmt.Println(<-ch)
+```
+This example creates a channel that can hold two values before blocking further sends.
+
+**Select Statement:**  
+The `select` statement is used to handle multiple channel operations, similar to a `switch` statement but for channels.  
+It allows you to wait on multiple channels and execute the corresponding case when data is available.
+
+**Example of using `select`:**
+```go
+select {
+case msg := <-ch1:
+    fmt.Println("Received from ch1:", msg)
+case msg := <-ch2:
+    fmt.Println("Received from ch2:", msg)
+default:
+    fmt.Println("No message received")
+}
+```
+The `select` will execute the case that gets data first from one of the channels. If no channels are ready, it will execute the `default` case.
+
